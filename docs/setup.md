@@ -9,7 +9,7 @@ node should have:
 
 - Static IP `192.168.178.200/24` on `vmbr0`
 - Gateway `192.168.178.1`
-- Docker installed (for MinIO; optional if you use a standalone MinIO binary)
+- Internet access (for downloading the Debian LXC template and MinIO binary)
 
 ## 2. Bootstrap MinIO (Terraform State Backend)
 
@@ -80,7 +80,7 @@ terraform init
 ```
 
 If `terraform init` fails because the MinIO endpoint is unreachable, verify:
-- MinIO container is running on Proxmox (`docker ps`)
+- MinIO service is running (`systemctl status minio`)
 - Port 9000 is not blocked by Proxmox firewall (`iptables -L`)
 
 ## 6. First Apply (Infrastructure Only)
