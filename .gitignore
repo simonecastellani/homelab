@@ -18,6 +18,7 @@ ansible/inventory.json
 
 # Agent tooling
 .pi/
+.agents/
 
 # IDE
 .idea/
