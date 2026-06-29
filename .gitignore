@@ -1,0 +1,24 @@
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.*.backup
+terraform.tfstate.backup
+*.tfvars
+!terraform/terraform.tfvars.example
+
+# Generated configs
+ansible/group_vars/all.yml
+ansible/inventory.yml
+ansible/inventory.json
+
+# Secrets
+*.pem
+*.key
+.env
+
+# Agent tooling
+.pi/
+
+# IDE
+.idea/
+.vscode/

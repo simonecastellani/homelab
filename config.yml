@@ -1,0 +1,38 @@
+# Single source of truth for homelab network and guest configuration.
+# Both Terraform and Ansible derive their values from this file via scripts/generate-configs.sh.
+
+network:
+  lan_subnet: "192.168.178.0/24"
+  gateway: "192.168.178.1"
+  bridge: "vmbr0"
+  nameservers:
+    - "1.1.1.1"
+    - "8.8.8.8"
+
+proxmox:
+  host: "192.168.178.200"
+  node: "pve"
+  port: 8006
+  token_id: "terraform@pam!ci"
+  # token_secret is set via CI secret PROXMOX_TOKEN_SECRET
+
+guests:
+  pihole:
+    role: dns
+    hostname: pihole
+    static_ip: "192.168.178.201"
+    cores: 1
+    memory: 512
+    disk: 8
+    storage: "local-lvm"
+
+  homeassistant:
+    role: home-automation
+    hostname: homeassistant
+    static_ip: "192.168.178.202"
+    cores: 2
+    memory: 2048
+    disk: 32
+    storage: "local-lvm"
+    # Container image for Docker Compose inside the LXC
+    docker_image: "ghcr.io/home-assistant/home-assistant:stable"
