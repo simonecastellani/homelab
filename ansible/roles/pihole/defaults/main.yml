@@ -1,0 +1,4 @@
+---
+pihole_vm_id: 201
+# pihole_admin_password is provided via CI secret (PIHOLE_ADMIN_PASSWORD).
+pihole_admin_password: ""

@@ -1,0 +1,7 @@
+---
+- name: Restart pi-hole container
+  ansible.builtin.command:
+    cmd: "pct restart {{ pihole_vm_id | default(201) }}"
+  delegate_to: "{{ proxmox_host }}"
+  become: true
+  changed_when: true

@@ -1,0 +1,14 @@
+---
+- name: Deploy Pi-hole
+  hosts: dns
+  gather_facts: true
+  become: false
+  roles:
+    - pihole
+
+- name: Deploy Home Assistant
+  hosts: home_automation
+  gather_facts: true
+  become: false
+  roles:
+    - homeassistant

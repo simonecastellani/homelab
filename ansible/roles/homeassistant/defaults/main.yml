@@ -1,0 +1,3 @@
+---
+homeassistant_vm_id: 202
+homeassistant_docker_image: "ghcr.io/home-assistant/home-assistant:stable"
