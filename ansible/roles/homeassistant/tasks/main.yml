@@ -1,18 +1,7 @@
 ---
 # Home Assistant is deployed via Docker Compose inside a Debian LXC.
-# Raw LXC config is required for Docker-in-LXC (cgroup devices, tun).
-
-- name: Configure LXC for Docker on Proxmox host
-  ansible.builtin.lineinfile:
-    path: "/etc/pve/lxc/{{ homeassistant_vm_id | default(202) }}.conf"
-    line: "{{ item }}"
-    state: present
-  delegate_to: "{{ proxmox_host }}"
-  become: true
-  loop:
-    - "lxc.cgroup2.devices.allow: c 10:200 rwm"
-    - "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file"
-  notify: Restart homeassistant container
+# LXC features (nesting, keyctl, unprivileged, /dev/net/tun passthrough)
+# are now managed by Terraform — no Proxmox host access needed here.
 
 - name: Install prerequisites
   ansible.builtin.apt:

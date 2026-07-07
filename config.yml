@@ -20,15 +20,22 @@ guests:
   pihole:
     role: dns
     hostname: pihole
+    vm_id: 201
+    description: "Pi-hole DNS server"
     static_ip: "192.168.178.201"
     cores: 1
     memory: 512
     disk: 8
     storage: "local-lvm"
+    features:
+      nesting: true
+      unprivileged: true
 
   homeassistant:
     role: home-automation
     hostname: homeassistant
+    vm_id: 202
+    description: "Home Assistant (Docker in LXC)"
     static_ip: "192.168.178.202"
     cores: 2
     memory: 2048
@@ -36,3 +43,9 @@ guests:
     storage: "local-lvm"
     # Container image for Docker Compose inside the LXC
     docker_image: "ghcr.io/home-assistant/home-assistant:stable"
+    features:
+      nesting: true
+      keyctl: true
+      unprivileged: true
+    device_passthrough:
+      - path: "/dev/net/tun"

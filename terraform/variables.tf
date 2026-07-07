@@ -46,13 +46,23 @@ variable "ssh_public_key" {
 variable "guests" {
   description = "Map of guest definitions"
   type = map(object({
-    hostname  = string
-    role      = string
-    static_ip = string
-    cores     = number
-    memory    = number
-    disk      = number
-    storage   = string
+    hostname    = string
+    role        = string
+    static_ip   = string
+    vm_id       = number
+    description = string
+    cores       = number
+    memory      = number
+    disk        = number
+    storage     = string
     docker_image = optional(string)
+    features = optional(object({
+      nesting      = optional(bool, false)
+      keyctl       = optional(bool, false)
+      unprivileged = optional(bool, false)
+    }))
+    device_passthrough = optional(list(object({
+      path = string
+    })), [])
   }))
 }

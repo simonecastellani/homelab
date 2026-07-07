@@ -2,16 +2,18 @@
 # Pi-hole runs in an unprivileged LXC. It needs CAP_NET_BIND_SERVICE to bind
 # port 53. The Proxmox host LXC config is updated before installation.
 
+# net_bind_service is required for Pi-hole to bind port 53 in an
+# unprivileged LXC. Other LXC features (nesting, keyctl, device
+# passthrough) are now managed by Terraform. This single lineinfile
+# is the only remaining LXC config leak across the Ansible seam —
+# the bpg/proxmox provider does not yet expose custom capabilities.
 - name: Allow unprivileged pi-hole LXC to bind port 53
   ansible.builtin.lineinfile:
-    path: "/etc/pve/lxc/{{ pihole_vm_id | default(201) }}.conf"
-    line: "{{ item }}"
+    path: "/etc/pve/lxc/{{ guests.pihole.vm_id | default(201) }}.conf"
+    line: "lxc.cap.add: net_bind_service"
     state: present
   delegate_to: "{{ proxmox_host }}"
   become: true
-  loop:
-    - "lxc.cap.add: net_bind_service"
-    - "lxc.cgroup2.devices.allow: c 10:200 rwm"
   notify: Restart pi-hole container
 
 - name: Update apt cache

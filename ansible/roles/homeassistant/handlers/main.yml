@@ -1,11 +1,4 @@
 ---
-- name: Restart homeassistant container
-  ansible.builtin.command:
-    cmd: "pct restart {{ homeassistant_vm_id | default(202) }}"
-  delegate_to: "{{ proxmox_host }}"
-  become: true
-  changed_when: true
-
 - name: Restart Home Assistant
   ansible.builtin.command:
     cmd: docker compose -f /opt/homeassistant/docker-compose.yml restart

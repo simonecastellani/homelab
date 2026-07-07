@@ -11,6 +11,10 @@ if ! command -v yq &>/dev/null; then
   echo "Error: yq is required. Install with: pip install yq  or  wget ..."
   exit 1
 fi
+if ! command -v jq &>/dev/null; then
+  echo "Error: jq is required."
+  exit 1
+fi
 
 # --- Terraform tfvars ---
 {
@@ -21,25 +25,47 @@ fi
   echo "proxmox_token_id = \"$(yq -r '.proxmox.token_id' "$CONFIG")\""
   echo "bridge           = \"$(yq -r '.network.bridge' "$CONFIG")\""
   echo "gateway          = \"$(yq -r '.network.gateway' "$CONFIG")\""
-  echo "nameservers      = [$(yq -r '.network.nameservers | map("\\"\(.\\"")") | join(", ")' "$CONFIG")]"
+  echo "nameservers      = $(yq -r '.network.nameservers | @json' "$CONFIG")"
   echo ""
   echo "guests = {"
-  yq -r '.guests | to_entries | .[] |
-    "  " + .key + " = {\n" +
-    "    hostname  = \"" + .value.hostname + "\"\n" +
-    "    role      = \"" + .value.role + "\"\n" +
-    "    static_ip = \"" + .value.static_ip + "\"\n" +
-    "    cores     = " + (.value.cores | tostring) + "\n" +
-    "    memory    = " + (.value.memory | tostring) + "\n" +
-    "    disk      = " + (.value.disk | tostring) + "\n" +
-    "    storage   = \"" + .value.storage + "\"\n" +
-    (if .value.docker_image then "    docker_image = \"" + .value.docker_image + "\"\n" else "" end) +
+
+  # Use jq for the nested guest blocks — yq string concatenation gets
+  # unwieldy with optional features and device_passthrough lists.
+  yq -o=json "$CONFIG" | jq -r '
+    .guests | to_entries[] |
+    "  \(.key) = {\n" +
+    "    hostname    = \"\(.value.hostname)\"\n" +
+    "    role        = \"\(.value.role)\"\n" +
+    "    static_ip   = \"\(.value.static_ip)\"\n" +
+    "    vm_id       = \(.value.vm_id)\n" +
+    "    description = \"\(.value.description)\"\n" +
+    "    cores       = \(.value.cores)\n" +
+    "    memory      = \(.value.memory)\n" +
+    "    disk        = \(.value.disk)\n" +
+    "    storage     = \"\(.value.storage)\"\n" +
+    (if .value.docker_image then "    docker_image = \"\(.value.docker_image)\"\n" else "" end) +
+    (if .value.features then
+      "    features = {\n" +
+      (if .value.features.nesting      then "      nesting      = true\n"  else "" end) +
+      (if .value.features.keyctl       then "      keyctl       = true\n"  else "" end) +
+      (if .value.features.unprivileged then "      unprivileged = true\n" else "" end) +
+      "    }\n"
+    else "" end) +
+    (if .value.device_passthrough then
+      (.value.device_passthrough | map(
+        "    device_passthrough {\n" +
+        "      path = \"\(.path)\"\n" +
+        "    }\n"
+      ) | join(""))
+    else "" end) +
     "  }"
-  ' "$CONFIG"
+  '
+
   echo "}"
 } > "$REPO_ROOT/terraform/terraform.tfvars"
 
 # --- Ansible group_vars ---
+# Only Ansible-relevant fields (no features, no device_passthrough).
 mkdir -p "$REPO_ROOT/ansible/group_vars"
 {
   echo "# Generated from config.yml — do not edit manually."
@@ -48,7 +74,7 @@ mkdir -p "$REPO_ROOT/ansible/group_vars"
   echo "lan_subnet: \"$(yq -r '.network.lan_subnet' "$CONFIG")\""
   echo "gateway: \"$(yq -r '.network.gateway' "$CONFIG")\""
   echo "nameservers:"
-  yq -r '.network.nameservers[] | "  - \"\(.\"")"' "$CONFIG"
+  yq -r '.network.nameservers[]' "$CONFIG" | sed 's/^/  - "/; s/$/"/'
   echo ""
   echo "guests:"
   yq -r '.guests | to_entries | .[] |
@@ -56,11 +82,23 @@ mkdir -p "$REPO_ROOT/ansible/group_vars"
     "    hostname: " + .value.hostname + "\n" +
     "    role: " + .value.role + "\n" +
     "    static_ip: " + .value.static_ip + "\n" +
+    "    vm_id: " + (.value.vm_id | tostring) + "\n" +
     "    cores: " + (.value.cores | tostring) + "\n" +
     "    memory: " + (.value.memory | tostring) + "\n" +
     "    disk: " + (.value.disk | tostring) + "\n" +
     (if .value.docker_image then "    docker_image: " + .value.docker_image + "\n" else "" end)
   ' "$CONFIG"
 } > "$REPO_ROOT/ansible/group_vars/all.yml"
+
+# --- Ansible bootstrap inventory ---
+{
+  echo "# Generated from config.yml — do not edit manually."
+  echo "---"
+  echo "proxmox:"
+  echo "  hosts:"
+  echo "    pve:"
+  echo "      ansible_host: $(yq -r '.proxmox.host' "$CONFIG")"
+  echo "      ansible_user: root"
+} > "$REPO_ROOT/ansible/inventory-bootstrap.yml"
 
 echo "Configs generated successfully."
