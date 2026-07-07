@@ -13,8 +13,11 @@ provider "proxmox" {
   api_token = var.proxmox_api_token
   insecure  = true
 
-  ssh {
-    agent    = true
-    username = "root"
-  }
+  # Temporarily disabled while diagnosing SSL error on container create.
+  # SSH is only required for idmap, snippet uploads, and disk import —
+  # none of which these containers use.
+  # ssh {
+  #   agent    = true
+  #   username = "root"
+  # }
 }
