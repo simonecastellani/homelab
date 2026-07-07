@@ -34,8 +34,8 @@ See [docs/setup.md](docs/setup.md) for the full bootstrap procedure.
 
 In short:
 1. Proxmox node at `192.168.178.200`
-2. MinIO bucket `terraform-state` on the LAN (script provided)
-3. GitHub Actions self-hosted runner (script provided)
+2. Ansible on your local machine
+3. Run `ansible/bootstrap.yml` to install MinIO + GitHub runner on the Proxmox node
 4. Five CI secrets configured in GitHub
 
 ## Open Issues / Risks

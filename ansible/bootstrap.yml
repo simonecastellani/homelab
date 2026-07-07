@@ -1,0 +1,21 @@
+---
+# Bootstrap the Proxmox node with MinIO (Terraform state backend) and a
+# GitHub Actions self-hosted runner. Run this once before the first
+# `terraform init`.
+#
+# Usage:
+#   ./scripts/generate-configs.sh
+#   ansible-playbook -i inventory-bootstrap.yml bootstrap.yml \
+#     --extra-vars "minio_root_password=SECRET github_runner_token=TOKEN"
+
+- name: Bootstrap Proxmox node
+  hosts: proxmox
+  gather_facts: true
+  become: false
+  roles:
+    - role: proxmox_template
+      tags: proxmox_template
+    - role: minio
+      tags: minio
+    - role: github_runner
+      tags: github_runner

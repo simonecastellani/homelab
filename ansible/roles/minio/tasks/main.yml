@@ -1,0 +1,96 @@
+---
+- name: Ensure MinIO data directory exists
+  ansible.builtin.file:
+    path: "{{ minio_data_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Check if MinIO binary exists
+  ansible.builtin.stat:
+    path: "{{ minio_bin }}"
+  register: minio_stat
+
+- name: Download MinIO server binary
+  ansible.builtin.get_url:
+    url: "https://dl.min.io/server/minio/release/linux-amd64/minio"
+    dest: "{{ minio_bin }}"
+    mode: "0755"
+  when: not minio_stat.stat.exists
+
+- name: Create MinIO systemd service
+  ansible.builtin.template:
+    src: minio.service.j2
+    dest: /etc/systemd/system/minio.service
+    mode: "0644"
+  notify: Restart minio
+
+- name: Ensure MinIO service is running
+  ansible.builtin.systemd:
+    name: minio
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for MinIO health endpoint
+  ansible.builtin.uri:
+    url: "http://localhost:{{ minio_port }}/minio/health/ready"
+    status_code: 200
+  register: minio_health
+  until: minio_health.status == 200
+  retries: 30
+  delay: 2
+
+- name: Check if mc binary exists
+  ansible.builtin.stat:
+    path: "{{ minio_mc_bin }}"
+  register: mc_stat
+
+- name: Download MinIO client (mc)
+  ansible.builtin.get_url:
+    url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+    dest: "{{ minio_mc_bin }}"
+    mode: "0755"
+  when: not mc_stat.stat.exists
+
+- name: Verify mc is the MinIO client (not Midnight Commander)
+  ansible.builtin.command:
+    cmd: "{{ minio_mc_bin }} --version"
+  register: mc_version
+  changed_when: false
+
+- name: Fail if mc is not the MinIO client
+  ansible.builtin.fail:
+    msg: |
+      {{ minio_mc_bin }} is not the MinIO client.
+      Output was: {{ mc_version.stdout | default('') }}{{ mc_version.stderr | default('') }}
+      Remove the existing binary so Ansible can download the correct one.
+  when: "'mc version' not in mc_version.stdout"
+
+- name: Check if local alias already exists
+  ansible.builtin.command:
+    cmd: "{{ minio_mc_bin }} alias ls local"
+  register: mc_alias_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Configure mc alias for local MinIO
+  ansible.builtin.command:
+    cmd: "{{ minio_mc_bin }} alias set local http://localhost:{{ minio_port }} {{ minio_root_user }} {{ minio_root_password }}"
+  when: mc_alias_check.rc != 0
+
+- name: Create terraform-state bucket
+  ansible.builtin.command:
+    cmd: >
+      {{ minio_mc_bin }} mb local/{{ minio_bucket }}
+      --ignore-existing
+      --insecure
+  changed_when: true
+
+- name: Report MinIO credentials
+  ansible.builtin.debug:
+    msg:
+      - "MinIO endpoint: http://{{ ansible_default_ipv4.address }}:{{ minio_port }}"
+      - "MinIO console:  http://{{ ansible_default_ipv4.address }}:{{ minio_console_port }}"
+      - "Access Key:     {{ minio_root_user }}"
+      - "Secret Key:     [masked — set via minio_root_password variable]"
+      - "Bucket:         {{ minio_bucket }}"

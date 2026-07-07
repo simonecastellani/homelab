@@ -1,0 +1,170 @@
+---
+# Uninstall MinIO and/or GitHub Actions runner from the Proxmox node.
+#
+# Usage:
+#   ./scripts/uninstall-minio.sh   [--extra-vars "minio_remove_data=true"]
+#   ./scripts/uninstall-runner.sh  [--extra-vars "github_runner_token=TOKEN"]
+#
+# Or run directly:
+#   ansible-playbook -i inventory-bootstrap.yml uninstall.yml \
+#     --tags minio
+#   ansible-playbook -i inventory-bootstrap.yml uninstall.yml \
+#     --tags github_runner
+
+- name: Uninstall MinIO
+  hosts: proxmox
+  gather_facts: true
+  become: false
+  vars:
+    minio_remove_data: false
+  tags: [minio]
+  tasks:
+    - name: Stop MinIO service
+      ansible.builtin.systemd:
+        name: minio
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable MinIO service
+      ansible.builtin.systemd:
+        name: minio
+        enabled: false
+      ignore_errors: true
+
+    - name: Remove MinIO systemd unit
+      ansible.builtin.file:
+        path: /etc/systemd/system/minio.service
+        state: absent
+      notify: Reload systemd
+
+    - name: Remove MinIO server binary
+      ansible.builtin.file:
+        path: /usr/local/bin/minio
+        state: absent
+
+    - name: Remove MinIO client binary (mc)
+      ansible.builtin.file:
+        path: /usr/local/bin/mc
+        state: absent
+
+    - name: Remove MinIO data directory
+      ansible.builtin.file:
+        path: /var/lib/minio-data
+        state: absent
+      when: minio_remove_data | bool
+
+    - name: MinIO data preserved
+      ansible.builtin.debug:
+        msg: "MinIO data directory /var/lib/minio-data was NOT removed. Set minio_remove_data=true to remove it."
+      when: not (minio_remove_data | bool)
+
+    - name: MinIO uninstall complete
+      ansible.builtin.debug:
+        msg:
+          - "MinIO has been uninstalled from {{ inventory_hostname }}."
+          - "Removed: service, binaries (minio, mc)."
+          - "Data dir: {{ 'removed' if (minio_remove_data | bool) else 'preserved at /var/lib/minio-data' }}."
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+- name: Uninstall GitHub Actions runner
+  hosts: proxmox
+  gather_facts: true
+  become: false
+  vars:
+    github_runner_dir: "/opt/github-runner"
+    github_runner_name: "proxmox-homelab-runner"
+    github_repo: ""
+    github_runner_token: ""
+  tags: [github_runner]
+  tasks:
+    - name: Discover runner systemd service
+      ansible.builtin.shell:
+        cmd: >
+          ls /etc/systemd/system/actions.runner.*.{{ github_runner_name }}.service 2>/dev/null
+          || true
+        executable: /bin/bash
+      register: runner_services
+      changed_when: false
+
+    - name: Parse service name
+      ansible.builtin.set_fact:
+        runner_service_file: "{{ runner_services.stdout_lines | first | default('') }}"
+        runner_services_found: "{{ runner_services.stdout_lines | list }}"
+
+    - name: Report discovered services
+      ansible.builtin.debug:
+        msg: "Found runner services: {{ runner_services_found }}"
+      when: runner_services_found | length > 0
+
+    - name: Stop runner service
+      ansible.builtin.systemd:
+        name: "{{ runner_service_file | basename }}"
+        state: stopped
+      when: runner_service_file | length > 0
+      ignore_errors: true
+
+    - name: Disable runner service
+      ansible.builtin.systemd:
+        name: "{{ runner_service_file | basename }}"
+        enabled: false
+      when: runner_service_file | length > 0
+      ignore_errors: true
+
+    - name: Uninstall via svc.sh (removes systemd unit)
+      ansible.builtin.command:
+        cmd: ./svc.sh uninstall
+      args:
+        chdir: "{{ github_runner_dir }}"
+      when: runner_service_file | length > 0
+      register: svc_uninstall
+      ignore_errors: true
+      changed_when: svc_uninstall.rc == 0
+
+    - name: Deregister runner from GitHub (if token provided)
+      ansible.builtin.command:
+        cmd: "./config.sh remove --token {{ github_runner_token }}"
+      args:
+        chdir: "{{ github_runner_dir }}"
+      environment:
+        RUNNER_ALLOW_RUNASROOT: "1"
+      when:
+        - github_runner_token | length > 0
+        - runner_service_file | length > 0
+      register: runner_remove
+      ignore_errors: true
+      changed_when: runner_remove.rc == 0
+
+    - name: Warn if token not provided
+      ansible.builtin.debug:
+        msg: >
+          github_runner_token not provided — runner was NOT deregistered from GitHub.
+          You can remove it manually from the repo Settings → Actions → Runners page.
+      when: github_runner_token | length == 0
+
+    - name: Remove runner directory
+      ansible.builtin.file:
+        path: "{{ github_runner_dir }}"
+        state: absent
+
+    - name: Remove any leftover runner systemd services
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ runner_services_found }}"
+      when: runner_services_found | length > 0
+      notify: Reload systemd
+
+    - name: GitHub runner uninstall complete
+      ansible.builtin.debug:
+        msg:
+          - "GitHub Actions runner has been uninstalled from {{ inventory_hostname }}."
+          - "Removed: service, runner directory {{ github_runner_dir }}."
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

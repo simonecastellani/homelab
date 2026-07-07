@@ -1,0 +1,4 @@
+---
+proxmox_template_prefix: "debian-12-standard"
+proxmox_template_storage: "local"
+proxmox_template_stable_name: "debian-12-standard.tar.zst"

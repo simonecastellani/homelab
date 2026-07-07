@@ -10,6 +10,7 @@ terraform.tfstate.backup
 ansible/group_vars/all.yml
 ansible/inventory.yml
 ansible/inventory.json
+ansible/inventory-bootstrap.yml
 
 # Secrets
 *.pem
@@ -23,3 +24,4 @@ ansible/inventory.json
 # IDE
 .idea/
 .vscode/
+ansible-venv/
