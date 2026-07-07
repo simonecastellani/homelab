@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build -t pi-sandbox -f Dockerfile.pi .
+docker build --rm --no-cache -t pi-sandbox -f Dockerfile.pi .
