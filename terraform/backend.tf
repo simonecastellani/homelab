@@ -3,7 +3,7 @@ terraform {
     bucket       = "terraform-state"
     key          = "homelab/terraform.tfstate"
     region       = "us-east-1"
-    endpoint     = "http://192.168.178.200:9000"
+    endpoints    = { s3 = "http://192.168.178.200:9000" }
     use_path_style = true
 
     skip_credentials_validation = true
