@@ -11,7 +11,7 @@ network:
 
 proxmox:
   host: "192.168.178.200"
-  node: "pve"
+  node: "proxmox"
   port: 8006
   token_id: "terraform@pam!ci"
   # token_secret is set via CI secret PROXMOX_TOKEN_SECRET
@@ -32,7 +32,7 @@ guests:
       unprivileged: true
 
   homeassistant:
-    role: home-automation
+    role: home_automation
     hostname: homeassistant
     vm_id: 202
     description: "Home Assistant (Docker in LXC)"
@@ -45,7 +45,4 @@ guests:
     docker_image: "ghcr.io/home-assistant/home-assistant:stable"
     features:
       nesting: true
-      keyctl: true
       unprivileged: true
-    device_passthrough:
-      - path: "/dev/net/tun"

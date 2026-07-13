@@ -31,7 +31,7 @@ fi
 
   # Use jq for the nested guest blocks — yq string concatenation gets
   # unwieldy with optional features and device_passthrough lists.
-  yq -o=json "$CONFIG" | jq -r '
+  yq -r '
     .guests | to_entries[] |
     "  \(.key) = {\n" +
     "    hostname    = \"\(.value.hostname)\"\n" +
@@ -52,14 +52,14 @@ fi
       "    }\n"
     else "" end) +
     (if .value.device_passthrough then
+      "    device_passthrough = [\n" +
       (.value.device_passthrough | map(
-        "    device_passthrough {\n" +
-        "      path = \"\(.path)\"\n" +
-        "    }\n"
-      ) | join(""))
+        "      { path = \"\(.path)\" }"
+      ) | join(",\n")) +
+      "\n    ]\n"
     else "" end) +
     "  }"
-  '
+  ' "$CONFIG"
 
   echo "}"
 } > "$REPO_ROOT/terraform/terraform.tfvars"
