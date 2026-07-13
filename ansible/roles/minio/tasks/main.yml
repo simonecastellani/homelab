@@ -40,6 +40,9 @@
   retries: 30
   delay: 2
 
+- name: Flush handlers to ensure MinIO runs with latest config
+  ansible.builtin.meta: flush_handlers
+
 - name: Check if mc binary exists
   ansible.builtin.stat:
     path: "{{ minio_mc_bin }}"
@@ -66,17 +69,9 @@
       Remove the existing binary so Ansible can download the correct one.
   when: "'mc version' not in mc_version.stdout"
 
-- name: Check if local alias already exists
-  ansible.builtin.command:
-    cmd: "{{ minio_mc_bin }} alias ls local"
-  register: mc_alias_check
-  ignore_errors: true
-  changed_when: false
-
 - name: Configure mc alias for local MinIO
   ansible.builtin.command:
     cmd: "{{ minio_mc_bin }} alias set local http://localhost:{{ minio_port }} {{ minio_root_user }} {{ minio_root_password }}"
-  when: mc_alias_check.rc != 0
 
 - name: Create terraform-state bucket
   ansible.builtin.command:
