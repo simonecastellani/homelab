@@ -1,10 +1,17 @@
 FROM node:24-bookworm-slim
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash ca-certificates git ripgrep  \
+  && apt-get install -y --no-install-recommends bash ca-certificates git gnupg ripgrep wget \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Terraform via HashiCorp APT repository
+RUN wget -O - https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+  && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com bookworm main" > /etc/apt/sources.list.d/hashicorp.list \
+  && apt-get update \
+  && apt-get install -y terraform \
   && rm -rf /var/lib/apt/lists/*
 RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 RUN npm install -g context-mode
 
-WORKDIR /workspace
+WORKDIR /home/node/workspace
 ENTRYPOINT ["pi"]

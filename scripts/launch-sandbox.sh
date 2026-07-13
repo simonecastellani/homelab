@@ -1,6 +1,8 @@
 #!/bin/bash
 
 docker run --rm -it \
-  -v "$HOME/.pi/agent:/root/.pi/agent" \
-  -v "$PWD:/workspace" \
+  -u "$(id -u):$(id -g)" \
+  -v "$HOME/.ssh:/home/node/.ssh" \
+  -v "$HOME/.pi/:/home/node/.pi/" \
+  -v "$PWD:/home/node/workspace" \
   pi-sandbox
