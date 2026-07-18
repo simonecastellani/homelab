@@ -23,6 +23,12 @@ jobs:
         with:
           terraform_version: "1.9.0"
 
+      - name: Setup yq
+        run: |
+          wget -qO "$RUNNER_TEMP/yq" https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
       - name: Generate configs
         run: ../scripts/generate-configs.sh
 

@@ -8,13 +8,60 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="$REPO_ROOT/config.yml"
 
 if ! command -v yq &>/dev/null; then
-  echo "Error: yq is required. Install with: pip install yq  or  wget ..."
+  echo "Error: mikefarah/yq is required. Install from https://github.com/mikefarah/yq/releases"
   exit 1
 fi
 if ! command -v jq &>/dev/null; then
   echo "Error: jq is required."
   exit 1
 fi
+
+JQ_GUESTS=$(cat <<'EOF'
+.guests | to_entries |
+map(
+  "  \(.key) = {\n" +
+  "    hostname    = \"\(.value.hostname)\"\n" +
+  "    role        = \"\(.value.role)\"\n" +
+  "    static_ip   = \"\(.value.static_ip)\"\n" +
+  "    vm_id       = \(.value.vm_id)\n" +
+  "    description = \"\(.value.description)\"\n" +
+  "    cores       = \(.value.cores)\n" +
+  "    memory      = \(.value.memory)\n" +
+  "    disk        = \(.value.disk)\n" +
+  "    storage     = \"\(.value.storage)\"\n" +
+  (if .value.docker_image then "    docker_image = \"\(.value.docker_image)\"\n" else "" end) +
+  (if .value.features then
+    "    features = {\n" +
+    (if .value.features.nesting      then "      nesting      = true\n"  else "" end) +
+    (if .value.features.keyctl       then "      keyctl       = true\n"  else "" end) +
+    (if .value.features.unprivileged then "      unprivileged = true\n" else "" end) +
+    "    }\n"
+  else "" end) +
+  (if .value.device_passthrough then
+    "    device_passthrough = [\n" +
+    (.value.device_passthrough | map(
+      "      { path = \"\(.path)\" }"
+    ) | join(",\n")) +
+    "\n    ]\n"
+  else "" end) +
+  "  }"
+) | join("\n")
+EOF
+)
+
+JQ_ANSIBLE_GUESTS=$(cat <<'EOF'
+.guests | to_entries | .[] |
+  "  " + .key + ":\n" +
+  "    hostname: " + .value.hostname + "\n" +
+  "    role: " + .value.role + "\n" +
+  "    static_ip: " + .value.static_ip + "\n" +
+  "    vm_id: " + (.value.vm_id | tostring) + "\n" +
+  "    cores: " + (.value.cores | tostring) + "\n" +
+  "    memory: " + (.value.memory | tostring) + "\n" +
+  "    disk: " + (.value.disk | tostring) + "\n" +
+  (if .value.docker_image then "    docker_image: " + .value.docker_image + "\n" else "" end)
+EOF
+)
 
 # --- Terraform tfvars ---
 {
@@ -25,41 +72,11 @@ fi
   echo "proxmox_token_id = \"$(yq -r '.proxmox.token_id' "$CONFIG")\""
   echo "bridge           = \"$(yq -r '.network.bridge' "$CONFIG")\""
   echo "gateway          = \"$(yq -r '.network.gateway' "$CONFIG")\""
-  echo "nameservers      = $(yq -r '.network.nameservers | @json' "$CONFIG")"
+  echo "nameservers      = $(yq -o=json '.' "$CONFIG" | jq -c '.network.nameservers')"
   echo ""
   echo "guests = {"
 
-  # Use jq for the nested guest blocks — yq string concatenation gets
-  # unwieldy with optional features and device_passthrough lists.
-  yq -r '
-    .guests | to_entries[] |
-    "  \(.key) = {\n" +
-    "    hostname    = \"\(.value.hostname)\"\n" +
-    "    role        = \"\(.value.role)\"\n" +
-    "    static_ip   = \"\(.value.static_ip)\"\n" +
-    "    vm_id       = \(.value.vm_id)\n" +
-    "    description = \"\(.value.description)\"\n" +
-    "    cores       = \(.value.cores)\n" +
-    "    memory      = \(.value.memory)\n" +
-    "    disk        = \(.value.disk)\n" +
-    "    storage     = \"\(.value.storage)\"\n" +
-    (if .value.docker_image then "    docker_image = \"\(.value.docker_image)\"\n" else "" end) +
-    (if .value.features then
-      "    features = {\n" +
-      (if .value.features.nesting      then "      nesting      = true\n"  else "" end) +
-      (if .value.features.keyctl       then "      keyctl       = true\n"  else "" end) +
-      (if .value.features.unprivileged then "      unprivileged = true\n" else "" end) +
-      "    }\n"
-    else "" end) +
-    (if .value.device_passthrough then
-      "    device_passthrough = [\n" +
-      (.value.device_passthrough | map(
-        "      { path = \"\(.path)\" }"
-      ) | join(",\n")) +
-      "\n    ]\n"
-    else "" end) +
-    "  }"
-  ' "$CONFIG"
+  yq -o=json '.' "$CONFIG" | jq -r "$JQ_GUESTS"
 
   echo "}"
 } > "$REPO_ROOT/terraform/terraform.tfvars"
@@ -74,20 +91,10 @@ mkdir -p "$REPO_ROOT/ansible/group_vars"
   echo "lan_subnet: \"$(yq -r '.network.lan_subnet' "$CONFIG")\""
   echo "gateway: \"$(yq -r '.network.gateway' "$CONFIG")\""
   echo "nameservers:"
-  yq -r '.network.nameservers[]' "$CONFIG" | sed 's/^/  - "/; s/$/"/'
+  yq -o=json '.' "$CONFIG" | jq -r '.network.nameservers | map("  - \"" + . + "\"") | .[]'
   echo ""
   echo "guests:"
-  yq -r '.guests | to_entries | .[] |
-    "  " + .key + ":\n" +
-    "    hostname: " + .value.hostname + "\n" +
-    "    role: " + .value.role + "\n" +
-    "    static_ip: " + .value.static_ip + "\n" +
-    "    vm_id: " + (.value.vm_id | tostring) + "\n" +
-    "    cores: " + (.value.cores | tostring) + "\n" +
-    "    memory: " + (.value.memory | tostring) + "\n" +
-    "    disk: " + (.value.disk | tostring) + "\n" +
-    (if .value.docker_image then "    docker_image: " + .value.docker_image + "\n" else "" end)
-  ' "$CONFIG"
+  yq -o=json '.' "$CONFIG" | jq -r "$JQ_ANSIBLE_GUESTS"
 } > "$REPO_ROOT/ansible/group_vars/all.yml"
 
 # --- Ansible bootstrap inventory ---
