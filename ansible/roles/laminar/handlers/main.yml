@@ -1,0 +1,7 @@
+---
+- name: Restart Laminar AI
+  ansible.builtin.command:
+    cmd: docker compose restart
+  args:
+    chdir: /opt/lmnr/
+  changed_when: true

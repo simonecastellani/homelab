@@ -47,12 +47,26 @@ guests:
       nesting: true
       unprivileged: true
 
-  opencode_vps:
+  opencode:
     role: vps
-    hostname: opencode_vps
+    hostname: opencode
     vm_id: 203
     description: "OpenCode VPS"
     static_ip: "192.168.178.203"
+    cores: 2
+    memory: 4096
+    disk: 32
+    storage: "local-lvm"
+    features:
+      nesting: true
+      unprivileged: true
+  
+  laminar:
+    role: vps
+    hostname: laminar
+    vm_id: 204
+    description: "Laminar AI VPS"
+    static_ip: "192.168.178.204"
     cores: 2
     memory: 4096
     disk: 32

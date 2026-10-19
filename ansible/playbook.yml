@@ -12,3 +12,17 @@
   become: false
   roles:
     - homeassistant
+
+- name: Deploy Opencode VPS
+  hosts: opencode
+  gather_facts: true
+  become: false
+  roles:
+    - opencode
+
+- name: Deploy Laminar AI
+  hosts: laminar
+  gather_facts: true
+  become: false
+  roles:
+    - laminar
