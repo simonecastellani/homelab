@@ -25,3 +25,4 @@ ansible/inventory-bootstrap.yml
 .idea/
 .vscode/
 ansible-venv/
+.DS_Store

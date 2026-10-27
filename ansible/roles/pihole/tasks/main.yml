@@ -13,7 +13,6 @@
     line: "lxc.cap.add: net_bind_service"
     state: present
   delegate_to: "{{ proxmox_host }}"
-  become: true
   notify: Restart pi-hole container
 
 - name: Update apt cache

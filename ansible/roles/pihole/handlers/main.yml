@@ -3,5 +3,4 @@
   ansible.builtin.command:
     cmd: "pct restart {{ guests.pihole.vm_id | default(201) }}"
   delegate_to: "{{ proxmox_host }}"
-  become: true
   changed_when: true
