@@ -1,8 +1,4 @@
 ---
-# Home Assistant is deployed via Docker Compose inside a Debian LXC.
-# LXC features (nesting, keyctl, unprivileged, /dev/net/tun passthrough)
-# are now managed by Terraform — no Proxmox host access needed here.
-
 - name: Install prerequisites
   ansible.builtin.apt:
     name:

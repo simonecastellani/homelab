@@ -62,7 +62,7 @@ guests:
       unprivileged: true
   
   laminar:
-    role: vps
+    role: laminar
     hostname: laminar
     vm_id: 204
     description: "Laminar AI VPS"
