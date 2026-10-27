@@ -27,16 +27,50 @@
       - git
     state: present
 
+# The installer only honors --unattended when Pi-hole is already configured:
+# without /etc/pihole/pihole.toml (or a legacy setupVars.conf) it treats the
+# run as a fresh install and always shows its welcome dialogs — including the
+# "Static IP Needed" one — regardless of --unattended (pi-hole/pi-hole #5283,
+# #6380, PR #6381). Those dialogs need a real terminal, so over a
+# non-interactive Ansible session a fresh install always dies with "Installer
+# exited at static IP message." Pre-seeding a minimal pihole.toml flips the
+# installer into its headless update path, where no dialogs are shown.
+- name: Create Pi-hole config directory
+  ansible.builtin.file:
+    path: /etc/pihole
+    state: directory
+    mode: "0755"
+
+- name: Pre-seed Pi-hole config for unattended install
+  ansible.builtin.copy:
+    dest: /etc/pihole/pihole.toml
+    # Never overwrite: after installation FTL owns this file and settings
+    # may have been changed through the web UI.
+    force: false
+    mode: "0640"
+    content: |
+      # Pre-seeded by Ansible (roles/pihole) to allow unattended installs.
+      # FTL applies defaults for everything not set here.
+      [dns]
+      upstreams = {{ nameservers | to_json }}
+
 - name: Install Pi-hole
   ansible.builtin.shell: |
     curl -sSL https://install.pi-hole.net | bash /dev/stdin --unattended
   args:
-    creates: /etc/pihole/setupVars.conf
+    # v6 never writes setupVars.conf, so it is not a usable install marker.
+    # The pihole CLI is installed to /usr/local/bin.
+    creates: /usr/local/bin/pihole
   environment:
     PIHOLE_SKIP_OS_CHECK: "true"
+    # Sessions launched from Ghostty leak TERM=xterm-ghostty through SSH,
+    # whose terminfo does not exist on this host and makes dialog fail.
+    # Pin a TERM that is always present on Debian.
+    TERM: xterm
 
 - name: Configure Pi-hole admin password
   ansible.builtin.command:
-    cmd: pihole -a -p "{{ pihole_admin_password }}"
+    # v6 syntax; the v5 "pihole -a -p" form no longer exists.
+    cmd: pihole setpassword "{{ pihole_admin_password }}"
   no_log: true
   changed_when: true
