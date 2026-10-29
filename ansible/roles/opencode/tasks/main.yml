@@ -38,7 +38,16 @@
     groups: docker
     append: true
 
-- name: Ensure opencode AI is running
-  ansible.builtin.command:
-    cmd: curl -fsSL https://opencode.ai/v2/install | bash
-  changed_when: true
+- name: Install opencode AI
+  # command does not run through a shell, so the pipe would be passed to
+  # curl as a literal argument. The installer must also run as the opencode
+  # user so the binary lands in /home/opencode/.opencode/bin.
+  ansible.builtin.shell: |
+    curl -fsSL https://opencode.ai/v2/install | bash /dev/stdin
+  become: true
+  become_user: opencode
+  # The play connects as root and sudo may not be installed on this host,
+  # while root -> opencode via su needs no password.
+  become_method: su
+  args:
+    creates: /home/opencode/.opencode/bin/opencode
