@@ -41,7 +41,7 @@
 - name: Clone git repository for Laminar AI
   ansible.builtin.git:
     repo: "{{ laminar_git_repo }}"
-    dest: /opt/
+    dest: /opt/lmnr
     version: "main"
 
 - name: Ensure Laminar AI is running
