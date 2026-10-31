@@ -1,0 +1,12 @@
+---
+reverse_proxy_origin_certificate: "{{ lookup('env', 'CLOUDFLARE_ORIGIN_CERT') }}"
+reverse_proxy_origin_private_key: "{{ lookup('env', 'CLOUDFLARE_ORIGIN_KEY') }}"
+
+reverse_proxy_lan_subnet: "192.168.178.0/24"
+reverse_proxy_homeassistant_hostname: "ha.simonecastellani.com"
+reverse_proxy_homeassistant_upstream: "192.168.178.202:8123"
+reverse_proxy_laminar_hostname: "laminar.simonecastellani.com"
+reverse_proxy_laminar_upstream: "192.168.178.204:5667"
+reverse_proxy_laminar_ingest_hostname: "ingest.simonecastellani.com"
+reverse_proxy_laminar_http_upstream: "192.168.178.204:8000"
+reverse_proxy_laminar_grpc_upstream: "192.168.178.204:8001"

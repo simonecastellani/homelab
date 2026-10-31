@@ -58,3 +58,8 @@ jobs:
             --extra-vars "pihole_admin_password=${{ secrets.PIHOLE_ADMIN_PASSWORD }}"
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          CLOUDFLARE_ORIGIN_CERT: ${{ secrets.CLOUDFLARE_ORIGIN_CERT }}
+          CLOUDFLARE_ORIGIN_KEY: ${{ secrets.CLOUDFLARE_ORIGIN_KEY }}
+          LAMINAR_AUTH_SECRET: ${{ secrets.LAMINAR_AUTH_SECRET }}
+          LAMINAR_GITHUB_OAUTH_ID: ${{ secrets.LAMINAR_GITHUB_OAUTH_ID }}
+          LAMINAR_GITHUB_OAUTH_SECRET: ${{ secrets.LAMINAR_GITHUB_OAUTH_SECRET }}

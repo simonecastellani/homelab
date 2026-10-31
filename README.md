@@ -11,6 +11,7 @@ and applications.
 | Guest type | Separate LXCs per application |
 | Pi-hole | Native Debian LXC, bridged networking, static IP |
 | Home Assistant | Native Debian LXC with Docker (preserves Pi setup) |
+| Public HTTPS | Caddy in a dedicated LXC, behind Cloudflare Full (strict) |
 | IaC tools | Terraform for Guests, Ansible for Applications |
 | Workflow | GitHub Actions, self-hosted runner on LAN |
 | State | Terraform state in MinIO (S3-compatible) on LAN |
@@ -30,13 +31,15 @@ and applications.
 
 ## Prerequisites
 
-See [docs/setup.md](docs/setup.md) for the full bootstrap procedure.
+See [docs/setup.md](docs/setup.md) for the full bootstrap procedure. Public
+HTTPS exposure through Cloudflare is documented in
+[docs/reverse-proxy.md](docs/reverse-proxy.md).
 
 In short:
 1. Proxmox node at `192.168.178.200`
 2. Ansible on your local machine
 3. Run `ansible/bootstrap.yml` to install MinIO + GitHub runner on the Proxmox node
-4. Five CI secrets configured in GitHub
+4. Required CI secrets configured in GitHub
 
 ## Open Issues / Risks
 

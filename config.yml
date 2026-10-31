@@ -74,3 +74,16 @@ guests:
     features:
       nesting: true
       unprivileged: true
+
+  reverseproxy:
+    role: reverse_proxy
+    hostname: reverseproxy
+    vm_id: 205
+    description: "Caddy reverse proxy"
+    static_ip: "192.168.178.205"
+    cores: 1
+    memory: 512
+    disk: 8
+    storage: "local-lvm"
+    features:
+      unprivileged: true

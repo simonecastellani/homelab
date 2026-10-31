@@ -1,4 +1,15 @@
 ---
+- name: Validate Laminar public authentication settings
+  ansible.builtin.assert:
+    that:
+      - laminar_auth_secret | length >= 32
+      - laminar_github_oauth_id | length > 0
+      - laminar_github_oauth_secret | length > 0
+    fail_msg: >-
+      LAMINAR_AUTH_SECRET (at least 32 characters), LAMINAR_GITHUB_OAUTH_ID,
+      and LAMINAR_GITHUB_OAUTH_SECRET must be set.
+  no_log: true
+
 - name: Install prerequisites
   ansible.builtin.apt:
     name:
@@ -43,6 +54,16 @@
     repo: "{{ laminar_git_repo }}"
     dest: /opt/lmnr
     version: "main"
+
+- name: Deploy Laminar public authentication configuration
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: /opt/lmnr/docker-compose.override.yml
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart Laminar AI
 
 - name: Ensure Laminar AI is running
   ansible.builtin.command:

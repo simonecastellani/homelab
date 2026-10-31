@@ -1,0 +1,53 @@
+{
+	servers {
+		trusted_proxies static {{ reverse_proxy_cloudflare_ips_v4 | join(' ') }} {{ reverse_proxy_cloudflare_ips_v6 | join(' ') }}
+		trusted_proxies_strict
+	}
+}
+
+(upstream_headers) {
+	header_up X-Forwarded-For {client_ip}
+}
+
+(origin_access) {
+	@denied not remote_ip {{ reverse_proxy_lan_subnet }} {{ reverse_proxy_cloudflare_ips_v4 | join(' ') }} {{ reverse_proxy_cloudflare_ips_v6 | join(' ') }}
+	abort @denied
+}
+
+{{ reverse_proxy_homeassistant_hostname }} {
+	import origin_access
+	tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin.key
+	reverse_proxy {{ reverse_proxy_homeassistant_upstream }} {
+		import upstream_headers
+	}
+}
+
+{{ reverse_proxy_laminar_hostname }} {
+	import origin_access
+	tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin.key
+	reverse_proxy {{ reverse_proxy_laminar_upstream }} {
+		import upstream_headers
+	}
+}
+
+{{ reverse_proxy_laminar_ingest_hostname }} {
+	import origin_access
+	tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin.key
+
+	@grpc protocol grpc
+	@http path /v1/traces
+
+	handle @grpc {
+		reverse_proxy h2c://{{ reverse_proxy_laminar_grpc_upstream }} {
+			import upstream_headers
+		}
+	}
+	handle @http {
+		reverse_proxy {{ reverse_proxy_laminar_http_upstream }} {
+			import upstream_headers
+		}
+	}
+	handle {
+		abort
+	}
+}

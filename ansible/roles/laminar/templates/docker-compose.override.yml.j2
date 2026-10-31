@@ -1,0 +1,11 @@
+---
+services:
+  frontend:
+    environment:
+      BETTER_AUTH_URL: "{{ laminar_public_url }}"
+      BETTER_AUTH_SECRET: "{{ laminar_auth_secret }}"
+      NEXTAUTH_URL: "{{ laminar_public_url }}"
+      NEXTAUTH_SECRET: "{{ laminar_auth_secret }}"
+      NEXT_PUBLIC_URL: "{{ laminar_public_url }}"
+      AUTH_GITHUB_ID: "{{ laminar_github_oauth_id }}"
+      AUTH_GITHUB_SECRET: "{{ laminar_github_oauth_secret }}"

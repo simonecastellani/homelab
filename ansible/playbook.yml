@@ -6,6 +6,13 @@
   roles:
     - pihole
 
+- name: Deploy Caddy reverse proxy
+  hosts: reverse_proxy
+  gather_facts: true
+  become: false
+  roles:
+    - reverse_proxy
+
 - name: Deploy Home Assistant
   hosts: home_automation
   gather_facts: true

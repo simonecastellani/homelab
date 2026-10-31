@@ -1,2 +1,6 @@
 ---
 laminar_git_repo: "https://github.com/lmnr-ai/lmnr"
+laminar_public_url: "https://laminar.simonecastellani.com"
+laminar_auth_secret: "{{ lookup('env', 'LAMINAR_AUTH_SECRET') }}"
+laminar_github_oauth_id: "{{ lookup('env', 'LAMINAR_GITHUB_OAUTH_ID') }}"
+laminar_github_oauth_secret: "{{ lookup('env', 'LAMINAR_GITHUB_OAUTH_SECRET') }}"

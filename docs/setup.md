@@ -88,6 +88,14 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions** and add
 | `PROXMOX_API_TOKEN` | Proxmox UI → Datacenter → Permissions → API Tokens → Add. Format: `USER@realm!TOKENID=SECRET` |
 | `SSH_PUBLIC_KEY` | Contents of `~/.ssh/id_rsa.pub` (the key injected into all Guests) |
 | `PIHOLE_ADMIN_PASSWORD` | Choose a strong password for the Pi-hole web UI |
+| `CLOUDFLARE_ORIGIN_CERT` | Cloudflare Origin CA certificate in PEM format |
+| `CLOUDFLARE_ORIGIN_KEY` | Cloudflare Origin CA private key in PEM format |
+| `LAMINAR_AUTH_SECRET` | Random Laminar session secret of at least 32 bytes |
+| `LAMINAR_GITHUB_OAUTH_ID` | GitHub OAuth App client ID |
+| `LAMINAR_GITHUB_OAUTH_SECRET` | GitHub OAuth App client secret |
+
+For the Cloudflare, router, and GitHub OAuth configuration, see
+[Reverse Proxy and Public HTTPS Access](reverse-proxy.md).
 
 ## 6. Initialize Terraform
 
@@ -115,7 +123,7 @@ terraform apply
 ```
 
 This creates:
-- Two LXCs (VM IDs 201 and 202)
+- The LXCs defined in `config.yml`
 - Network configuration with static IPs
 - (The Debian 12 template was already downloaded in step 4)
 
@@ -145,6 +153,9 @@ cd ansible
 ansible-playbook -i inventory.yml playbook.yml \
   --extra-vars "pihole_admin_password=YOUR_PASSWORD_HERE"
 ```
+
+The reverse proxy and Laminar roles also require the environment variables
+listed in [Reverse Proxy and Public HTTPS Access](reverse-proxy.md).
 
 ## 10. Verify
 
