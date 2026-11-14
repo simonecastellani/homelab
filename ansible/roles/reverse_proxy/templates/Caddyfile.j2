@@ -51,3 +51,11 @@
 		abort
 	}
 }
+
+{{ reverse_proxy_laya_hostname }} {
+	import origin_access
+	tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin.key
+	reverse_proxy {{ reverse_proxy_laya_upstream }} {
+		import upstream_headers
+	}
+}
