@@ -1,6 +1,8 @@
 ---
 reverse_proxy_origin_certificate: "{{ lookup('env', 'CLOUDFLARE_ORIGIN_CERT') }}"
 reverse_proxy_origin_private_key: "{{ lookup('env', 'CLOUDFLARE_ORIGIN_KEY') }}"
+# Bearer token clients must send to reach the public Laya MCP endpoint.
+reverse_proxy_laya_token: "{{ lookup('env', 'LAYA_MCP_TOKEN') }}"
 
 reverse_proxy_lan_subnet: "192.168.178.0/24"
 reverse_proxy_homeassistant_hostname: "ha.simonecastellani.com"

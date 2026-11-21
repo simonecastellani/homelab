@@ -4,7 +4,10 @@
     that:
       - reverse_proxy_origin_certificate | length > 0
       - reverse_proxy_origin_private_key | length > 0
-    fail_msg: "CLOUDFLARE_ORIGIN_CERT and CLOUDFLARE_ORIGIN_KEY must be set."
+      - reverse_proxy_laya_token | length >= 32
+    fail_msg: >-
+      CLOUDFLARE_ORIGIN_CERT, CLOUDFLARE_ORIGIN_KEY and LAYA_MCP_TOKEN
+      (at least 32 characters) must be set.
   no_log: true
 
 - name: Install Caddy repository prerequisites

@@ -90,6 +90,7 @@ Go to **GitHub repo → Settings → Secrets and variables → Actions** and add
 | `PIHOLE_ADMIN_PASSWORD` | Choose a strong password for the Pi-hole web UI |
 | `CLOUDFLARE_ORIGIN_CERT` | Cloudflare Origin CA certificate in PEM format |
 | `CLOUDFLARE_ORIGIN_KEY` | Cloudflare Origin CA private key in PEM format |
+| `LAYA_MCP_TOKEN` | Random bearer token of at least 32 characters for the public Laya MCP endpoint |
 | `LAMINAR_AUTH_SECRET` | Random Laminar session secret of at least 32 bytes |
 | `LAMINAR_GITHUB_OAUTH_ID` | GitHub OAuth App client ID |
 | `LAMINAR_GITHUB_OAUTH_SECRET` | GitHub OAuth App client secret |

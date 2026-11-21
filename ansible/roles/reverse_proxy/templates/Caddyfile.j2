@@ -55,6 +55,8 @@
 {{ reverse_proxy_laya_hostname }} {
 	import origin_access
 	tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin.key
+	@laya_unauthorized not header Authorization "Bearer {{ reverse_proxy_laya_token }}"
+	respond @laya_unauthorized 401
 	reverse_proxy {{ reverse_proxy_laya_upstream }} {
 		import upstream_headers
 	}

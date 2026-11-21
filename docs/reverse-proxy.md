@@ -10,16 +10,31 @@ configured Caddy virtual hosts.
 | `https://ha.simonecastellani.com` | Home Assistant on `192.168.178.202:8123` |
 | `https://laminar.simonecastellani.com` | Laminar frontend on `192.168.178.204:5667` |
 | `https://ingest.simonecastellani.com/v1/traces` | Laminar OTLP/HTTP on port `8000` and OTLP/gRPC on port `8001` |
+| `https://laya.simonecastellani.com/mcp` | Laya MCP server on `192.168.178.203:8000` |
 
 The ingest hostname accepts OTLP/HTTP only on `/v1/traces` and routes gRPC to
 the dedicated ingestion port. Both HTTP and gRPC clients use public port `443`;
 Caddy connects to the gRPC backend over h2c. Ingestion requires a Laminar
 Project API Key and must not be placed behind Cloudflare Access.
 
+## Laya MCP endpoint
+
+The `laya` host publishes the Laya MCP server over Streamable HTTP at `/mcp`.
+Caddy requires a shared bearer token on every request:
+
+```
+Authorization: Bearer <LAYA_MCP_TOKEN>
+```
+
+Requests without it get `401`. Keep this hostname out of Cloudflare Access:
+MCP clients authenticate with the header, not with a browser session. The
+Laya HTTP API itself (`192.168.178.203:8001`) stays on loopback and is not
+published. See [Laya decision engine](laya.md).
+
 ## Cloudflare
 
-1. Create proxied DNS records for `ha`, `laminar`, and `ingest`, pointing to the
-   router's static public IP.
+1. Create proxied DNS records for `ha`, `laminar`, `ingest`, and `laya`,
+   pointing to the router's static public IP.
 2. Set SSL/TLS mode to **Full (strict)** and enable **Always Use HTTPS**.
 3. Create an Origin CA certificate covering `*.simonecastellani.com` (and the
    apex domain, if desired).
@@ -54,6 +69,7 @@ required allowlist; otherwise use an additional access-control layer.
 |---|---|
 | `CLOUDFLARE_ORIGIN_CERT` | Full Origin CA certificate in PEM format |
 | `CLOUDFLARE_ORIGIN_KEY` | Origin CA private key in PEM format |
+| `LAYA_MCP_TOKEN` | Bearer token (at least 32 characters) required by the public Laya MCP endpoint |
 | `LAMINAR_AUTH_SECRET` | Random secret of at least 32 bytes |
 | `LAMINAR_GITHUB_OAUTH_ID` | GitHub OAuth App client ID |
 | `LAMINAR_GITHUB_OAUTH_SECRET` | GitHub OAuth App client secret |
