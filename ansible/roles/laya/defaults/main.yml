@@ -1,0 +1,31 @@
+---
+# Laya decision engine on the opencode VM.
+#
+# Two containers share the upstream compose files:
+#   laya-serve — the HTTP API (laya.serve), published on loopback only;
+#   laya-mcp   — the MCP server in remote mode, exposed on the LAN so the
+#                reverse proxy can publish it as https://laya.simonecastellani.com/mcp.
+laya_git_repo: "https://github.com/NandhaKishorM/laya.git"
+laya_git_ref: "v0.4.31"
+
+# Our own files live next to the upstream checkout, which is kept pristine
+# apart from the pinned ref.
+laya_dir: "/opt/laya"
+laya_src_dir: "{{ laya_dir }}/src"
+
+# Host port for the laya-serve API, bound to 127.0.0.1 only. 8001 keeps 8000
+# free for the MCP endpoint the reverse proxy already targets.
+laya_serve_port: 8001
+# Host port for the MCP server. Caddy forwards laya.simonecastellani.com here.
+laya_mcp_port: 8000
+# Container-side port the MCP HTTP server listens on.
+laya_mcp_container_port: 8080
+
+laya_torch_index: "cpu"
+laya_torch_version: "2.14.0"
+laya_preload: true
+
+# Global OpenCode config for the local user: the MCP endpoint over loopback,
+# so no bearer token is needed inside the VM.
+laya_opencode_user: "opencode"
+laya_opencode_config_dir: "/home/{{ laya_opencode_user }}/.config/opencode"

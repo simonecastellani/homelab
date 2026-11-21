@@ -1,0 +1,178 @@
+---
+# Laya is deployed on the opencode VM with Docker Compose. The source tree is
+# cloned at a pinned release tag and built once per ref; the images, the model
+# cache volume and the running containers are reused on later runs.
+- name: Check that Docker Compose is available
+  ansible.builtin.command:
+    cmd: docker compose version
+  register: laya_compose_check
+  changed_when: false
+  failed_when: false
+
+- name: Require Docker Compose on the target
+  ansible.builtin.assert:
+    that:
+      - laya_compose_check.rc == 0
+    fail_msg: >-
+      Docker Compose is not available on {{ inventory_hostname }}.
+      The opencode role installs it; run that play before this one.
+
+- name: Ensure Laya directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ laya_dir }}"
+    - "{{ laya_dir }}/mcp"
+
+- name: Clone Laya at the pinned release
+  ansible.builtin.git:
+    repo: "{{ laya_git_repo }}"
+    dest: "{{ laya_src_dir }}"
+    version: "{{ laya_git_ref }}"
+    force: true
+
+# Compose project: laya-serve on loopback, laya-mcp on the LAN.
+- name: Deploy Laya compose project
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ laya_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy the MCP image definition
+  ansible.builtin.copy:
+    src: mcp/Dockerfile
+    dest: "{{ laya_dir }}/mcp/Dockerfile"
+    owner: root
+    group: root
+    mode: "0644"
+
+# Streamable HTTP wrapper around the stdio-only MCP server.
+- name: Deploy the MCP HTTP entrypoint
+  ansible.builtin.copy:
+    src: mcp_http.py
+    dest: "{{ laya_dir }}/mcp/mcp_http.py"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Check the Laya build marker
+  ansible.builtin.stat:
+    path: "{{ laya_dir }}/.built-ref"
+  register: laya_built_ref
+
+- name: Read the Laya build marker
+  ansible.builtin.slurp:
+    src: "{{ laya_dir }}/.built-ref"
+  register: laya_built_ref_content
+  when: laya_built_ref.stat.exists
+
+- name: Check whether the Laya serve image is present
+  ansible.builtin.command:
+    cmd: docker image inspect laya-laya-serve:latest
+  register: laya_serve_image
+  changed_when: false
+  failed_when: false
+
+- name: Build the Laya serve image
+  ansible.builtin.command:
+    cmd: docker compose -f {{ laya_dir }}/compose.yml build laya-serve
+    chdir: "{{ laya_dir }}"
+  when: >-
+    not laya_built_ref.stat.exists
+    or (laya_built_ref_content.content | default('') | b64decode | trim) != laya_git_ref
+    or laya_serve_image.rc != 0
+
+# The MCP image is a thin layer on laya-laya-serve, so it is built second.
+- name: Build the Laya MCP image
+  ansible.builtin.command:
+    cmd: docker compose -f {{ laya_dir }}/compose.yml build laya-mcp
+    chdir: "{{ laya_dir }}"
+  when: >-
+    not laya_built_ref.stat.exists
+    or (laya_built_ref_content.content | default('') | b64decode | trim) != laya_git_ref
+    or laya_serve_image.rc != 0
+
+- name: Record the built Laya release
+  ansible.builtin.copy:
+    content: "{{ laya_git_ref }}\n"
+    dest: "{{ laya_dir }}/.built-ref"
+    owner: root
+    group: root
+    mode: "0644"
+  when: >-
+    not laya_built_ref.stat.exists
+    or (laya_built_ref_content.content | default('') | b64decode | trim) != laya_git_ref
+    or laya_serve_image.rc != 0
+
+# --remove-orphans drops the upstream quickstart container left behind by the
+# previous manual install.
+- name: Ensure Laya containers are running
+  ansible.builtin.command:
+    cmd: >-
+      docker compose -f {{ laya_dir }}/compose.yml up -d --wait --remove-orphans
+      laya-serve laya-mcp
+    chdir: "{{ laya_dir }}"
+  register: laya_up
+  changed_when: >-
+    ('Started' in (laya_up.stdout ~ laya_up.stderr))
+    or ('Recreated' in (laya_up.stdout ~ laya_up.stderr))
+    or ('Created' in (laya_up.stdout ~ laya_up.stderr))
+
+- name: Wait for the Laya serve API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ laya_serve_port }}/health"
+    method: GET
+    status_code: 200
+  register: laya_serve_health
+  until: laya_serve_health.status == 200
+  retries: 12
+  delay: 5
+  changed_when: false
+
+- name: Verify the MCP endpoint answers an initialize request
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ laya_mcp_port }}/mcp"
+    method: POST
+    body_format: json
+    headers:
+      Accept: "application/json, text/event-stream"
+    body:
+      jsonrpc: "2.0"
+      id: 1
+      method: initialize
+      params:
+        protocolVersion: "2025-06-18"
+        capabilities: {}
+        clientInfo:
+          name: ansible
+          version: "0"
+    status_code: 200
+  register: laya_mcp_probe
+  until: laya_mcp_probe.status == 200
+  retries: 12
+  delay: 5
+  changed_when: false
+
+# The local OpenCode client reaches the MCP endpoint over loopback, so no
+# bearer token is involved inside the VM.
+- name: Ensure the OpenCode config directory exists
+  ansible.builtin.file:
+    path: "{{ laya_opencode_config_dir }}"
+    state: directory
+    owner: "{{ laya_opencode_user }}"
+    group: "{{ laya_opencode_user }}"
+    mode: "0755"
+
+- name: Register the Laya MCP server in OpenCode
+  ansible.builtin.template:
+    src: opencode.json.j2
+    dest: "{{ laya_opencode_config_dir }}/opencode.json"
+    owner: "{{ laya_opencode_user }}"
+    group: "{{ laya_opencode_user }}"
+    mode: "0644"

@@ -1,0 +1,67 @@
+---
+# Laya decision engine, self-contained compose project.
+#
+# The upstream compose files are not used directly: they publish the API on
+# 127.0.0.1:8000 through a shell-interpolated port that cannot be changed from
+# an override, and the port this project needs on 8000 is the MCP endpoint.
+# Only the upstream source tree (build context) and image name are kept, so the
+# existing model cache volume and image layers are reused.
+name: laya
+
+services:
+  laya-serve:
+    build:
+      context: "{{ laya_src_dir }}"
+      args:
+        TORCH_INDEX: "{{ laya_torch_index }}"
+        TORCH_VERSION: "{{ laya_torch_version }}"
+    image: laya-laya-serve:latest
+    command: ["laya-serve"]
+    environment:
+      LAYA_DEVICE: "cpu"
+      LAYA_HOST: "0.0.0.0"
+      LAYA_PORT: "8000"
+      LAYA_PRELOAD: "{{ 1 if laya_preload else 0 }}"
+      LAYA_THREADS: "{{ ansible_processor_vcpus }}"
+      OMP_NUM_THREADS: "{{ ansible_processor_vcpus }}"
+      HF_HOME: "/home/laya/.cache/huggingface"
+    volumes:
+      - model-cache:/home/laya/.cache/huggingface
+    ports:
+      - "127.0.0.1:{{ laya_serve_port }}:8000"
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['LAYA_PORT'] + '/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 2s
+
+  laya-mcp:
+    build:
+      context: "{{ laya_dir }}/mcp"
+    image: laya-mcp:latest
+    # The image's entrypoint only speaks stdio; mcp_http.py runs the same MCP
+    # server over streamable HTTP at /mcp.
+    entrypoint: ["/opt/venv/bin/python", "{{ laya_dir }}/mcp/mcp_http.py"]
+    environment:
+      LAYA_BASE_URL: "http://laya-serve:8000"
+      LAYA_MCP_HOST: "0.0.0.0"
+      LAYA_MCP_PORT: "{{ laya_mcp_container_port }}"
+    volumes:
+      - "{{ laya_dir }}/mcp/mcp_http.py:{{ laya_dir }}/mcp/mcp_http.py:ro"
+    ports:
+      - "0.0.0.0:{{ laya_mcp_port }}:{{ laya_mcp_container_port }}"
+    depends_on:
+      laya-serve:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+    # Pin the name so the weights downloaded before this project existed keep
+    # being used instead of a fresh 2 GB fetch.
+    name: laya_model-cache

@@ -33,3 +33,10 @@
   become: false
   roles:
     - laminar
+
+- name: Deploy Laya decision engine
+  hosts: opencode
+  gather_facts: true
+  become: false
+  roles:
+    - laya

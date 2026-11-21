@@ -33,7 +33,8 @@ and applications.
 
 See [docs/setup.md](docs/setup.md) for the full bootstrap procedure. Public
 HTTPS exposure through Cloudflare is documented in
-[docs/reverse-proxy.md](docs/reverse-proxy.md).
+[docs/reverse-proxy.md](docs/reverse-proxy.md); the Laya decision engine and
+its public MCP endpoint are documented in [docs/laya.md](docs/laya.md).
 
 In short:
 1. Proxmox node at `192.168.178.200`

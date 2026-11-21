@@ -48,7 +48,7 @@ guests:
       unprivileged: true
 
   opencode:
-    role: vps
+    role: opencode
     hostname: opencode
     vm_id: 203
     description: "OpenCode VPS"
